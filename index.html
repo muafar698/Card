@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FlashFlow">
 
+<script>
+if ("standalone" in window.navigator && window.navigator.standalone) {
+  document.documentElement.style.height = "100%";
+  document.body.style.height = "100%";
+}
+</script>
 <meta charset="UTF-8">
 
 <meta name="viewport"
@@ -693,6 +702,30 @@ user-scalable=no">
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
   }
+  // Save session automatically
+try {
+  const savedData = localStorage.getItem("flashflow-session");
+  if (savedData) {
+    const data = JSON.parse(savedData);
+    allCards = data.allCards || [];
+    wrongWords = new Set(data.wrongWords || []);
+    correctCount = data.correctCount || 0;
+  }
+} catch(e) {}
+
+// Auto-save
+function saveSession() {
+  try {
+    localStorage.setItem("flashflow-session", JSON.stringify({
+      allCards,
+      wrongWords: Array.from(wrongWords),
+      correctCount
+    }));
+  } catch(e) {}
+}
+
+// Save after actions
+setInterval(saveSession, 2000);
 </script>
 </body>
 </html>
