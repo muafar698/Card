@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashFlow — Anki Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0ece4;
+    --bg2: #e6e0d6;
+    --surface: #faf8f4;
+    --surface2: #f0ece4;
+    --border: #d8d2c8;
+    --text: #1a1714;
+    --text2: #6b635a;
+    --text3: #9e9488;
+    --accent: #e8572a;
+    --accent2: #f07b55;
+    --correct: #2ecc8f;
+    --wrong: #e8572a;
+    --shadow: rgba(26,23,20,0.12);
+    --shadow2: rgba(26,23,20,0.06);
+    --card-front: #faf8f4;
+    --card-back: #1a1714;
+    --card-back-text: #faf8f4;
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
+  [data-theme="dark"] {
+    --bg: #111009;
+    --bg2: #1a1814;
+    --surface: #221f1a;
+    --surface2: #2a2620;
+    --border: #3a352e;
+    --text: #f0ece4;
+    --text2: #a09890;
+    --text3: #6b635a;
+    --accent: #f07b55;
+    --accent2: #e8572a;
+    --correct: #2ecc8f;
+    --wrong: #f07b55;
+    --shadow: rgba(0,0,0,0.4);
+    --shadow2: rgba(0,0,0,0.2);
+    --card-front: #221f1a;
+    --card-back: #f0ece4;
+    --card-back-text: #1a1714;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .btn-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .btn-icon:hover { background: var(--border); color: var(--text); }
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  #upload-screen {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 48px 0;
+  }
+  .upload-hero { text-align: center; }
+  .upload-hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .upload-hero p { color: var(--text2); font-size: 17px; max-width: 380px; line-height: 1.6; }
+  .upload-zone {
+    width: 100%;
+    max-width: 480px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 52px 32px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface);
+    transition: all 0.25s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--surface2); }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 44px; margin-bottom: 16px; display: block; }
+  .upload-zone p { font-size: 15px; color: var(--text2); margin-top: 8px; }
+  .upload-zone strong { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); font-weight: 700; }
+  .format-hint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    max-width: 480px;
+    width: 100%;
+  }
+  .format-hint h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text3); margin-bottom: 10px;
+  }
+  .format-hint code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px; color: var(--accent);
+    background: var(--bg2);
+    padding: 8px 12px; border-radius: 8px;
+    display: block; line-height: 1.8;
+  }
+  .stats-bar { width: 100%; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 18px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text2);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat-pill .val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .stat-pill.wrong-pill .val { color: var(--wrong); }
+  .stat-pill.correct-pill .val { color: var(--correct); }
+  .progress-wrap { width: 100%; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+  .mode-bar {
+    display: flex; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px; padding: 4px;
+  }
+  .mode-btn {
+    padding: 8px 20px; border-radius: 50px;
+    border: none; background: transparent;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .mode-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+  .card-area { width: 100%; perspective: 1200px; min-height: 320px; cursor: pointer; }
+  .card-inner {
+    position: relative; width: 100%; min-height: 320px;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(.4,0,.2,1);
+  }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute; top: 0; left: 0; right: 0; min-height: 320px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: var(--radius);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 40px 32px;
+    box-shadow: 0 8px 40px var(--shadow), 0 2px 8px var(--shadow2);
+    overflow: hidden;
+  }
+  .card-front { background: var(--card-front); border: 1px solid var(--border); }
+  .card-back { background: var(--card-back); transform: rotateY(180deg); }
+  .card-label {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    opacity: 0.35; margin-bottom: 20px; align-self: flex-start;
+  }
+  .card-front .card-label { color: var(--text); }
+  .card-back .card-label { color: var(--card-back-text); }
+  .card-word {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 6vw, 52px);
+    font-weight: 800; letter-spacing: -1px;
+    text-align: center; color: var(--text);
+    word-break: break-word; line-height: 1.15;
+  }
+  .card-hint { margin-top: 24px; font-size: 13px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .card-definition {
+    width: 100%; color: var(--card-back-text);
+    font-size: 16px; line-height: 1.7; text-align: left;
+    max-height: 260px; overflow-y: auto; padding-right: 4px;
+  }
+  .card-definition img { max-width: 100%; border-radius: 10px; margin: 8px 0; }
+  .card-definition::-webkit-scrollbar { width: 4px; }
+  .card-definition::-webkit-scrollbar-track { background: transparent; }
+  .card-definition::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+  .card-back-word {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--card-back-text); opacity: 0.4;
+    align-self: flex-start; margin-bottom: 16px;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .card-enter { animation: cardIn 0.35s cubic-bezier(.4,0,.2,1); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 600;
+    border: none; cursor: pointer;
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+    position: relative; overflow: hidden;
+  }
+  .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.1); opacity: 0; transition: opacity 0.2s; }
+  .btn:hover::after { opacity: 1; }
+  .btn:active { transform: scale(0.97); }
+  .btn-reveal {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 4px 20px rgba(232,87,42,0.35);
+    min-width: 180px; justify-content: center;
+  }
+  .btn-reveal:hover { box-shadow: 0 6px 28px rgba(232,87,42,0.5); }
+  .btn-correct {
+    background: var(--correct); color: #fff;
+    box-shadow: 0 4px 16px rgba(46,204,143,0.35);
+    flex: 1; max-width: 200px; justify-content: center;
+  }
+  .btn-wrong {
+    background: var(--surface); color: var(--wrong);
+    border: 2px solid var(--wrong);
+    flex: 1; max-width: 200px; justify-content: center;
+  }
+  .btn-wrong:hover { background: var(--wrong); color: #fff; }
+  .btn-shuffle {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); padding: 10px 20px; font-size: 14px;
+  }
+  .btn-shuffle:hover { background: var(--border); color: var(--text); }
+  .actions { display: flex; gap: 16px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .wrong-panel {
+    width: 100%; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .wrong-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; cursor: pointer; transition: background 0.2s; user-select: none;
+  }
+  .wrong-panel-header:hover { background: var(--surface2); }
+  .wrong-panel-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+  .wrong-count-badge { background: var(--wrong); color: #fff; border-radius: 50px; padding: 2px 10px; font-size: 12px; font-weight: 700; }
+  .wrong-panel-chevron { color: var(--text3); transition: transform 0.3s; font-size: 12px; }
+  .wrong-panel.open .wrong-panel-chevron { transform: rotate(180deg); }
+  .wrong-panel-body { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(.4,0,.2,1); }
+  .wrong-panel.open .wrong-panel-body { max-height: 400px; overflow-y: auto; }
+  .wrong-list { padding: 0 20px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .wrong-tag {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 50px; padding: 5px 14px;
+    font-size: 13px; color: var(--text2);
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .wrong-tag:hover { border-color: var(--wrong); color: var(--wrong); }
+  .wrong-tag-remove { opacity: 0.5; font-size: 11px; }
+  .toast {
+    position: fixed; bottom: 32px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: var(--bg);
+    padding: 12px 24px; border-radius: 50px;
+    font-size: 14px; font-weight: 500;
+    z-index: 1000;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s;
+    opacity: 0; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .shortcuts { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .shortcut { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); }
+  kbd {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 2px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 500; color: var(--text2);
+  }
+  .complete-screen { text-align: center; padding: 60px 32px; width: 100%; }
+  .complete-emoji { font-size: 72px; margin-bottom: 24px; animation: bounceIn 0.6s cubic-bezier(.4,0,.2,1); }
+  @keyframes bounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .complete-screen h2 { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+  .complete-screen p { color: var(--text2); font-size: 16px; margin-bottom: 28px; }
+  .hidden { display: none !important; }
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; }
+    main { padding: 28px 16px 60px; gap: 20px; }
+    .card-face { padding: 28px 24px 22px; }
+    .card-word { font-size: 30px; }
+    .btn { padding: 13px 22px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Flash<span>Flow</span></div>
+  <div class="header-right">
+    <button class="btn-icon" id="themeBtn" title="Toggle dark mode">🌙</button>
+    <button class="btn-icon hidden" id="newDeckBtn" title="Load new deck">📂</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Upload Screen -->
+  <div id="upload-screen">
+    <div class="upload-hero">
+      <h1>Study<br>smarter.</h1>
+      <p>Load your Anki export and start reviewing flashcards instantly.</p>
+    </div>
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".txt">
+      <span class="upload-icon">📄</span>
+      <strong>Drop your Anki .txt file here</strong>
+      <p>or click to browse</p>
+    </div>
+    <div class="format-hint">
+      <h3>Expected Format</h3>
+      <code>#separator:tab<br>#html:true<br>word&nbsp;&nbsp;&nbsp;definition or &lt;b&gt;HTML&lt;/b&gt;</code>
+    </div>
+  </div>
+
+  <!-- Study Screen -->
+  <div id="study-screen" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:22px;">
+
+    <div class="stats-bar">
+      <div class="stat-pill"><span class="val" id="totalCards">0</span>&nbsp;cards</div>
+      <div class="stat-pill"><span class="val" id="remainingCards">0</span>&nbsp;remaining</div>
+      <div class="stat-pill correct-pill">✅&nbsp;<span class="val" id="correctCount">0</span></div>
+      <div class="stat-pill wrong-pill">❌&nbsp;<span class="val" id="wrongCount">0</span></div>
+    </div>
+
+    <div class="progress-wrap" style="width:100%">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="mode-bar">
+      <button class="mode-btn active" id="modeAll" onclick="setMode('all')">All Cards</button>
+      <button class="mode-btn" id="modeWrong" onclick="setMode('wrong')">Wrong Only <span id="wrongBadge" style="opacity:0.6;font-size:12px"></span></button>
+    </div>
+
+    <div class="card-area" id="cardArea" onclick="revealCard()">
+      <div class="card-inner" id="cardInner">
+        <div class="card-face card-front">
+          <div class="card-label">Word</div>
+          <div class="card-word" id="cardWord"></div>
+          <div class="card-hint"><span>⌨</span> Space to reveal</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-label">Definition</div>
+          <div class="card-back-word" id="cardBackWord"></div>
+          <div class="card-definition" id="cardDefinition"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" id="revealActions">
+      <button class="btn btn-reveal" onclick="revealCard()">👁 Reveal Answer</button>
+    </div>
+    <div class="actions hidden" id="judgeActions">
+      <button class="btn btn-wrong" onclick="markWrong()">❌ Wrong</button>
+      <button class="btn btn-correct" onclick="markCorrect()">✅ Correct</button>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-shuffle" onclick="shuffleDeck()">🔀 Shuffle</button>
+      <button class="btn btn-shuffle" onclick="resetSession()">🔄 Restart</button>
+    </div>
+
+    <div class="shortcuts">
+      <div class="shortcut"><kbd>Space</kbd> reveal</div>
+      <div class="shortcut"><kbd>→</kbd> correct</div>
+      <div class="shortcut"><kbd>←</kbd> wrong</div>
+    </div>
+
+    <div class="wrong-panel" id="wrongPanel">
+      <div class="wrong-panel-header" onclick="toggleWrongPanel()">
+        <div class="wrong-panel-title">
+          ❌ Wrong Words
+          <span class="wrong-count-badge" id="wrongPanelBadge">0</span>
+        </div>
+        <span class="wrong-panel-chevron">▼</span>
+      </div>
+      <div class="wrong-panel-body">
+        <div class="wrong-list" id="wrongList"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Complete Screen -->
+  <div id="complete-screen" class="hidden complete-screen">
+    <div class="complete-emoji" id="completeEmoji">🎉</div>
+    <h2 id="completeTitle">Deck Complete!</h2>
+    <p id="completeText"></p>
+    <button class="btn btn-reveal" onclick="resetSession()">🔄 Go Again</button>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let allCards = [], deck = [], currentIndex = 0;
+  let revealed = false, wrongWords = new Set(), correctCount = 0, mode = 'all';
+
+  function parseAnkiTxt(text) {
+    const lines = text.split('\n');
+    const cards = [];
+    for (let raw of lines) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const tab = line.indexOf('\t');
+      if (tab === -1) continue;
+      const word = line.substring(0, tab).trim();
+      let def = line.substring(tab + 1).trim();
+      if (def.startsWith('"') && def.endsWith('"')) def = def.slice(1, -1);
+      def = def.replace(/""/g, '"');
+      if (word) cards.push({ word, definition: def });
+    }
+    return cards;
+  }
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const cards = parseAnkiTxt(e.target.result);
+      if (!cards.length) { showToast('No cards found. Check file format.'); return; }
+      allCards = cards;
+      startSession();
+      showToast('✨ Loaded ' + cards.length.toLocaleString() + ' cards');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function startSession() {
+    correctCount = 0; wrongWords.clear(); mode = 'all';
+    deck = shuffle([...allCards]);
+    currentIndex = 0;
+    document.getElementById('upload-screen').classList.add('hidden');
+    document.getElementById('complete-screen').classList.add('hidden');
+    document.getElementById('study-screen').classList.remove('hidden');
+    document.getElementById('newDeckBtn').classList.remove('hidden');
+    document.getElementById('modeAll').classList.add('active');
+    document.getElementById('modeWrong').classList.remove('active');
+    updateStats(); updateWrongPanel(); loadCard();
+  }
+
+  function resetSession() {
+    document.getElementById('complete-screen').classList.add('hidden');
+    correctCount = 0;
+    deck = shuffle(mode === 'wrong'
+      ? allCards.filter(c => wrongWords.has(c.word))
+      : [...allCards]);
+    currentIndex = 0;
+    document.getElementById('study-screen').classList.remove('hidden');
+    updateStats(); loadCard();
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('modeAll').classList.toggle('active', m === 'all');
+    document.getElementById('modeWrong').classList.toggle('active', m === 'wrong');
+    correctCount = 0;
+    if (m === 'wrong') {
+      if (!wrongWords.size) { showToast('No wrong words yet!'); setMode('all'); return; }
+      deck = shuffle(allCards.filter(c => wrongWords.has(c.word)));
+    } else {
+      deck = shuffle([...allCards]);
+    }
+    currentIndex = 0; updateStats(); loadCard();
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function shuffleDeck() {
+    deck = shuffle(mode === 'wrong'
+      ? allCards.filter(c => wrongWords.has(c.word))
+      : [...allCards]);
+    currentIndex = 0; correctCount = 0;
+    updateStats(); loadCard(); showToast('🔀 Shuffled!');
+  }
+
+  function loadCard() {
+    if (currentIndex >= deck.length) { showComplete(); return; }
+    revealed = false;
+    const card = deck[currentIndex];
+
+    // Animate card area
+    const area = document.getElementById('cardArea');
+    area.classList.remove('card-enter');
+    void area.offsetWidth;
+    area.classList.add('card-enter');
+
+    document.getElementById('cardInner').classList.remove('flipped');
+    document.getElementById('cardWord').textContent = card.word;
+    document.getElementById('cardBackWord').textContent = card.word;
+    document.getElementById('cardDefinition').innerHTML = card.definition;
+    document.getElementById('revealActions').classList.remove('hidden');
+    document.getElementById('judgeActions').classList.add('hidden');
+    updateStats();
+  }
+
+  function revealCard() {
+    if (revealed) return;
+    revealed = true;
+    document.getElementById('cardInner').classList.add('flipped');
+    document.getElementById('revealActions').classList.add('hidden');
+    document.getElementById('judgeActions').classList.remove('hidden');
+  }
+
+  function markCorrect() {
+    if (!revealed) return;
+    correctCount++; currentIndex++;
+    updateStats(); loadCard();
+  }
+
+  function markWrong() {
+    if (!revealed) return;
+    wrongWords.add(deck[currentIndex].word);
+    currentIndex++;
+    updateStats(); updateWrongPanel(); loadCard();
+  }
+
+  function updateStats() {
+    const remaining = Math.max(deck.length - currentIndex, 0);
+    document.getElementById('totalCards').textContent = allCards.length.toLocaleString();
+    document.getElementById('remainingCards').textContent = remaining.toLocaleString();
+    document.getElementById('correctCount').textContent = correctCount.toLocaleString();
+    document.getElementById('wrongCount').textContent = wrongWords.size.toLocaleString();
+    const pct = deck.length > 0 ? (currentIndex / deck.length) * 100 : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('wrongBadge').textContent = wrongWords.size ? '(' + wrongWords.size + ')' : '';
+    document.getElementById('wrongPanelBadge').textContent = wrongWords.size;
+  }
+
+  function updateWrongPanel() {
+    const list = document.getElementById('wrongList');
+    list.innerHTML = '';
+    wrongWords.forEach(w => {
+      const tag = document.createElement('div');
+      tag.className = 'wrong-tag';
+      const wEsc = w.replace(/'/g, "\\'");
+      tag.innerHTML = '<span>' + w + '</span><span class="wrong-tag-remove" onclick="removeWrong(event,\'' + wEsc + '\')">✕</span>';
+      list.appendChild(tag);
+    });
+  }
+
+  function toggleWrongPanel() {
+    document.getElementById('wrongPanel').classList.toggle('open');
+  }
+
+  function removeWrong(e, word) {
+    e.stopPropagation();
+    wrongWords.delete(word);
+    updateStats(); updateWrongPanel();
+  }
+
+  function showComplete() {
+    document.getElementById('study-screen').classList.add('hidden');
+    document.getElementById('complete-screen').classList.remove('hidden');
+    const pct = deck.length > 0 ? Math.round((correctCount / deck.length) * 100) : 0;
+    const emoji = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '👍' : '💪';
+    const title = pct >= 90 ? 'Excellent!' : pct >= 70 ? 'Great job!' : pct >= 50 ? 'Good effort!' : 'Keep going!';
+    document.getElementById('completeEmoji').textContent = emoji;
+    document.getElementById('completeTitle').textContent = title;
+    document.getElementById('completeText').textContent =
+      'You got ' + correctCount + ' of ' + deck.length + ' cards correct (' + pct + '%).' +
+      (wrongWords.size ? ' ' + wrongWords.size + ' words to review.' : '');
+  }
+
+  document.getElementById('newDeckBtn').addEventListener('click', () => {
+    document.getElementById('study-screen').classList.add('hidden');
+    document.getElementById('complete-screen').classList.add('hidden');
+    document.getElementById('upload-screen').classList.remove('hidden');
+    document.getElementById('newDeckBtn').classList.add('hidden');
+    document.getElementById('fileInput').value = '';
+  });
+
+  // Theme
+  const themeBtn = document.getElementById('themeBtn');
+  try {
+    const saved = localStorage.getItem('ff-theme');
+    if (saved === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); themeBtn.textContent = '☀️'; }
+  } catch(e) {}
+  themeBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    themeBtn.textContent = isDark ? '🌙' : '☀️';
+    try { localStorage.setItem('ff-theme', isDark ? 'light' : 'dark'); } catch(e) {}
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('study-screen').classList.contains('hidden')) return;
+    if (e.code === 'Space' && !e.repeat) { e.preventDefault(); revealCard(); }
+    if (e.code === 'ArrowRight' && revealed) markCorrect();
+    if (e.code === 'ArrowLeft' && revealed) markWrong();
+  });
+
+  // Toast
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>
